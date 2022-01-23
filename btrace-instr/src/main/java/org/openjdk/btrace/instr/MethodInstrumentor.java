@@ -422,7 +422,8 @@ public class MethodInstrumentor extends BTraceMethodVisitor {
       specialArgsCount++;
     }
 
-    Type[] cleansedArgArray = new Type[actionArgTypes.length - specialArgsCount];
+    Type[] cleansedArgArray =
+        new Type[actionArgTypes.length - specialArgsCount - om.getLocalParameterDefs().size()];
     int[] cleansedArgIndex = new int[cleansedArgArray.length];
 
     int counter = 0;
@@ -433,7 +434,8 @@ public class MethodInstrumentor extends BTraceMethodVisitor {
           && argIndex != om.getReturnParameter()
           && argIndex != om.getTargetInstanceParameter()
           && argIndex != om.getTargetMethodOrFieldParameter()
-          && argIndex != om.getDurationParameter()) {
+          && argIndex != om.getDurationParameter()
+          && !om.getLocalParameterDefs().containsKey(argIndex)) {
         cleansedArgArray[counter] = actionArgTypes[argIndex];
         cleansedArgIndex[counter] = argIndex;
         counter++;

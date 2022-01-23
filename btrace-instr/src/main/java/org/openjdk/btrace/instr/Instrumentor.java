@@ -65,6 +65,7 @@ public class Instrumentor extends ClassVisitor {
   private String className, superName;
 
   private final boolean useHiddenClasses;
+  private final LocalParameterTracker localParameterTracker = new LocalParameterTracker();
 
   private Instrumentor(
       ClassLoader cl, BTraceProbe bcn, Collection<OnMethod> applicables, ClassVisitor cv) {
@@ -300,16 +301,30 @@ public class Instrumentor extends ClassVisitor {
               }
               Label l = levelCheckBefore(om, bcn.getClassName(true));
               if (where == Where.BEFORE) {
-                loadArguments(
-                    localVarArg(vr.getArgIdx(INDEX_PTR), Type.INT_TYPE, argsIndex[INDEX_PTR]),
+                ArgumentProvider[] argumentProviders =
+                    new ArgumentProvider[5 + om.getLocalParameterDefs().size()];
+                argumentProviders[0] =
+                    localVarArg(vr.getArgIdx(INDEX_PTR), Type.INT_TYPE, argsIndex[INDEX_PTR]);
+                argumentProviders[1] =
                     localVarArg(
                         om.getTargetInstanceParameter(),
                         Constants.OBJECT_TYPE,
-                        argsIndex[INSTANCE_PTR]),
-                    constArg(om.getClassNameParameter(), className.replace('/', '.')),
-                    constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                    selfArg(om.getSelfParameter(), Type.getObjectType(className)));
-
+                        argsIndex[INSTANCE_PTR]);
+                argumentProviders[2] =
+                    constArg(om.getClassNameParameter(), className.replace('/', '.'));
+                argumentProviders[3] = constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+                argumentProviders[4] =
+                    selfArg(om.getSelfParameter(), Type.getObjectType(className));
+                int i = 5;
+                for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                  argumentProviders[i++] =
+                      localVarArg(
+                          lpd.idx,
+                          Constants.VALUE_HOLDER_TYPE,
+                          localParameterTracker.getParameter(
+                              className, name, lpd.name, mHelper, mv));
+                }
+                loadArguments(argumentProviders);
                 invokeBTraceAction(asm, om);
               }
               if (l != null) {
@@ -345,20 +360,36 @@ public class Instrumentor extends ClassVisitor {
                   retValIndex = storeNewLocal(retType);
                 }
 
-                loadArguments(
-                    localVarArg(vr.getArgIdx(INDEX_PTR), Type.INT_TYPE, argsIndex[INDEX_PTR]),
+                ArgumentProvider[] argumentProviders =
+                    new ArgumentProvider[6 + om.getLocalParameterDefs().size()];
+                argumentProviders[0] =
+                    localVarArg(vr.getArgIdx(INDEX_PTR), Type.INT_TYPE, argsIndex[INDEX_PTR]);
+                argumentProviders[1] =
                     localVarArg(
                         om.getTargetInstanceParameter(),
                         Constants.OBJECT_TYPE,
-                        argsIndex[INSTANCE_PTR]),
-                    constArg(om.getClassNameParameter(), className.replace('/', '.')),
-                    constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
+                        argsIndex[INSTANCE_PTR]);
+                argumentProviders[2] =
+                    constArg(om.getClassNameParameter(), className.replace('/', '.'));
+                argumentProviders[3] = constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+                argumentProviders[4] =
                     localVarArg(
                         om.getReturnParameter(),
                         retType,
                         retValIndex,
-                        TypeUtils.isAnyType(actionArgRetType)),
-                    selfArg(om.getSelfParameter(), Type.getObjectType(className)));
+                        TypeUtils.isAnyType(actionArgRetType));
+                argumentProviders[5] =
+                    selfArg(om.getSelfParameter(), Type.getObjectType(className));
+                int i = 6;
+                for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                  argumentProviders[i++] =
+                      localVarArg(
+                          lpd.idx,
+                          Constants.VALUE_HOLDER_TYPE,
+                          localParameterTracker.getParameter(
+                              className, name, lpd.name, mHelper, mv));
+                }
+                loadArguments(argumentProviders);
                 invokeBTraceAction(asm, om);
 
                 if (l != null) {
@@ -405,19 +436,34 @@ public class Instrumentor extends ClassVisitor {
               Label l = levelCheckBefore(om, bcn.getClassName(true));
 
               if (where == Where.BEFORE) {
-                loadArguments(
+                ArgumentProvider[] argumentProviders =
+                    new ArgumentProvider[6 + om.getLocalParameterDefs().size()];
+                argumentProviders[0] =
                     localVarArg(
-                        om.getTargetInstanceParameter(), arrayType, argsIndex[INSTANCE_PTR]),
-                    localVarArg(vr.getArgIdx(INDEX_PTR), Type.INT_TYPE, argsIndex[INDEX_PTR]),
+                        om.getTargetInstanceParameter(), arrayType, argsIndex[INSTANCE_PTR]);
+                argumentProviders[1] =
+                    localVarArg(vr.getArgIdx(INDEX_PTR), Type.INT_TYPE, argsIndex[INDEX_PTR]);
+                argumentProviders[2] =
                     localVarArg(
                         vr.getArgIdx(VALUE_PTR),
                         elementType,
                         argsIndex[VALUE_PTR],
-                        TypeUtils.isAnyType(argElementType)),
-                    constArg(om.getClassNameParameter(), className.replace('/', '.')),
-                    constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                    selfArg(om.getSelfParameter(), Type.getObjectType(className)));
-
+                        TypeUtils.isAnyType(argElementType));
+                argumentProviders[3] =
+                    constArg(om.getClassNameParameter(), className.replace('/', '.'));
+                argumentProviders[4] = constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+                argumentProviders[5] =
+                    selfArg(om.getSelfParameter(), Type.getObjectType(className));
+                int i = 6;
+                for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                  argumentProviders[i++] =
+                      localVarArg(
+                          lpd.idx,
+                          Constants.VALUE_HOLDER_TYPE,
+                          localParameterTracker.getParameter(
+                              className, name, lpd.name, mHelper, mv));
+                }
+                loadArguments(argumentProviders);
                 invokeBTraceAction(asm, om);
               }
               if (l != null) {
@@ -446,21 +492,36 @@ public class Instrumentor extends ClassVisitor {
 
                 Label l = levelCheckAfter(om, bcn.getClassName(true));
 
-                loadArguments(
+                ArgumentProvider[] argumentProviders =
+                    new ArgumentProvider[6 + om.getLocalParameterDefs().size()];
+                argumentProviders[0] =
                     localVarArg(
-                        om.getTargetInstanceParameter(), arrayType, argsIndex[INSTANCE_PTR]),
-                    localVarArg(vr.getArgIdx(INDEX_PTR), Type.INT_TYPE, argsIndex[INDEX_PTR]),
+                        om.getTargetInstanceParameter(), arrayType, argsIndex[INSTANCE_PTR]);
+                argumentProviders[1] =
+                    localVarArg(vr.getArgIdx(INDEX_PTR), Type.INT_TYPE, argsIndex[INDEX_PTR]);
+                argumentProviders[2] =
                     localVarArg(
                         vr.getArgIdx(VALUE_PTR),
                         elementType,
                         argsIndex[VALUE_PTR],
-                        TypeUtils.isAnyType(argElementType)),
-                    constArg(om.getClassNameParameter(), className.replace('/', '.')),
-                    constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
+                        TypeUtils.isAnyType(argElementType));
+                argumentProviders[3] =
+                    constArg(om.getClassNameParameter(), className.replace('/', '.'));
+                argumentProviders[4] = constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+                argumentProviders[5] =
                     isStatic()
                         ? constArg(om.getSelfParameter(), null)
-                        : localVarArg(om.getSelfParameter(), Type.getObjectType(className), 0));
-
+                        : localVarArg(om.getSelfParameter(), Type.getObjectType(className), 0);
+                int i = 6;
+                for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                  argumentProviders[i++] =
+                      localVarArg(
+                          lpd.idx,
+                          Constants.VALUE_HOLDER_TYPE,
+                          localParameterTracker.getParameter(
+                              className, name, lpd.name, mHelper, mv));
+                }
+                loadArguments(argumentProviders);
                 invokeBTraceAction(asm, om);
                 if (l != null) {
                   mv.visitLabel(l);
@@ -488,7 +549,8 @@ public class Instrumentor extends ClassVisitor {
               Type[] callArgTypes,
               Type returnType,
               boolean staticCall) {
-            ArgumentProvider[] actionArgs = new ArgumentProvider[actionArgTypes.length + 7];
+            ArgumentProvider[] actionArgs =
+                new ArgumentProvider[actionArgTypes.length + 7 + om.getLocalParameterDefs().size()];
             for (int i = 0; i < vr.getArgCnt(); i++) {
               int index = vr.getArgIdx(i);
               Type t = actionArgTypes[index];
@@ -533,6 +595,14 @@ public class Instrumentor extends ClassVisitor {
                     MethodTrackingExpander.DURATION.insert(mv);
                   }
                 };
+            int i = actionArgTypes.length + 7;
+            for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+              actionArgs[i++] =
+                  localVarArg(
+                      lpd.idx,
+                      Constants.VALUE_HOLDER_TYPE,
+                      localParameterTracker.getParameter(className, name, lpd.name, mHelper, mv));
+            }
 
             loadArguments(actionArgs);
 
@@ -702,12 +772,22 @@ public class Instrumentor extends ClassVisitor {
                 asm.dup();
                 index = storeAsNew();
               }
-              loadArguments(
-                  localVarArg(om.getTargetInstanceParameter(), exctype, index),
-                  constArg(om.getClassNameParameter(), className.replace('/', '.')),
-                  constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                  selfArg(om.getSelfParameter(), Type.getObjectType(className)));
-
+              ArgumentProvider[] argumentProviders =
+                  new ArgumentProvider[4 + om.getLocalParameterDefs().size()];
+              argumentProviders[0] = localVarArg(om.getTargetInstanceParameter(), exctype, index);
+              argumentProviders[1] =
+                  constArg(om.getClassNameParameter(), className.replace('/', '.'));
+              argumentProviders[2] = constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+              argumentProviders[3] = selfArg(om.getSelfParameter(), Type.getObjectType(className));
+              int i = 4;
+              for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                argumentProviders[i++] =
+                    localVarArg(
+                        lpd.idx,
+                        Constants.VALUE_HOLDER_TYPE,
+                        localParameterTracker.getParameter(className, name, lpd.name, mHelper, mv));
+              }
+              loadArguments(argumentProviders);
               invokeBTraceAction(asm, om);
               if (l != null) {
                 mv.visitLabel(l);
@@ -737,14 +817,27 @@ public class Instrumentor extends ClassVisitor {
                   asm.dup();
                   castTypeIndex = storeAsNew();
                 }
-                loadArguments(
-                    constArg(vr.getArgIdx(0), castType.getClassName()),
-                    constArg(om.getClassNameParameter(), className.replace('/', '.')),
-                    constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                    selfArg(om.getSelfParameter(), Type.getObjectType(className)),
+                ArgumentProvider[] argumentProviders =
+                    new ArgumentProvider[5 + om.getLocalParameterDefs().size()];
+                argumentProviders[0] = constArg(vr.getArgIdx(0), castType.getClassName());
+                argumentProviders[1] =
+                    constArg(om.getClassNameParameter(), className.replace('/', '.'));
+                argumentProviders[2] = constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+                argumentProviders[3] =
+                    selfArg(om.getSelfParameter(), Type.getObjectType(className));
+                argumentProviders[4] =
                     localVarArg(
-                        om.getTargetInstanceParameter(), Constants.OBJECT_TYPE, castTypeIndex));
-
+                        om.getTargetInstanceParameter(), Constants.OBJECT_TYPE, castTypeIndex);
+                int i = 5;
+                for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                  argumentProviders[i++] =
+                      localVarArg(
+                          lpd.idx,
+                          Constants.VALUE_HOLDER_TYPE,
+                          localParameterTracker.getParameter(
+                              className, name, lpd.name, mHelper, mv));
+                }
+                loadArguments(argumentProviders);
                 invokeBTraceAction(asm, om);
                 if (l != null) {
                   mv.visitLabel(l);
@@ -782,13 +875,21 @@ public class Instrumentor extends ClassVisitor {
           }
 
           private void injectBtrace() {
-            loadArguments(
-                vr,
-                actionArgTypes,
-                isStatic(),
-                constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                constArg(om.getClassNameParameter(), className.replace('/', '.')),
-                selfArg(om.getSelfParameter(), Type.getObjectType(className)));
+            ArgumentProvider[] argumentProviders =
+                new ArgumentProvider[3 + om.getLocalParameterDefs().size()];
+            argumentProviders[0] = constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+            argumentProviders[1] =
+                constArg(om.getClassNameParameter(), className.replace('/', '.'));
+            argumentProviders[2] = selfArg(om.getSelfParameter(), Type.getObjectType(className));
+            int i = 3;
+            for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+              argumentProviders[i++] =
+                  localVarArg(
+                      lpd.idx,
+                      Constants.VALUE_HOLDER_TYPE,
+                      localParameterTracker.getParameter(className, name, lpd.name, mHelper, mv));
+            }
+            loadArguments(vr, actionArgTypes, isStatic(), argumentProviders);
 
             invokeBTraceAction(asm, om);
           }
@@ -865,7 +966,8 @@ public class Instrumentor extends ClassVisitor {
                 throwableIndex = storeAsNew();
               }
 
-              ArgumentProvider[] actionArgs = new ArgumentProvider[5];
+              ArgumentProvider[] actionArgs =
+                  new ArgumentProvider[5 + om.getLocalParameterDefs().size()];
 
               actionArgs[0] =
                   localVarArg(
@@ -880,6 +982,14 @@ public class Instrumentor extends ClassVisitor {
                       MethodTrackingExpander.DURATION.insert(mv);
                     }
                   };
+              int i = 5;
+              for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                actionArgs[i++] =
+                    localVarArg(
+                        lpd.idx,
+                        Constants.VALUE_HOLDER_TYPE,
+                        localParameterTracker.getParameter(className, name, lpd.name, mHelper, mv));
+              }
 
               Label l = levelCheck(om, bcn.getClassName(true));
 
@@ -954,13 +1064,16 @@ public class Instrumentor extends ClassVisitor {
                 Label l = levelCheckBefore(om, bcn.getClassName(true));
 
                 if (where == Where.BEFORE) {
-                  loadArguments(
+                  ArgumentProvider[] argumentProviders =
+                      new ArgumentProvider[5 + om.getLocalParameterDefs().size()];
+                  argumentProviders[0] =
                       isStaticAccess
                           ? constArg(om.getTargetInstanceParameter(), null)
                           : localVarArg(
                               om.getTargetInstanceParameter(),
                               Constants.OBJECT_TYPE,
-                              calledInstanceIndex),
+                              calledInstanceIndex);
+                  argumentProviders[1] =
                       constArg(
                           om.getTargetMethodOrFieldParameter(),
                           getMethodOrFieldName(
@@ -968,11 +1081,23 @@ public class Instrumentor extends ClassVisitor {
                               opcode,
                               targetClassName,
                               targetFieldName,
-                              desc)),
-                      constArg(om.getClassNameParameter(), className.replace('/', '.')),
-                      constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                      selfArg(om.getSelfParameter(), Type.getObjectType(className)));
-
+                              desc));
+                  argumentProviders[2] =
+                      constArg(om.getClassNameParameter(), className.replace('/', '.'));
+                  argumentProviders[3] =
+                      constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+                  argumentProviders[4] =
+                      selfArg(om.getSelfParameter(), Type.getObjectType(className));
+                  int i = 5;
+                  for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                    argumentProviders[i++] =
+                        localVarArg(
+                            lpd.idx,
+                            Constants.VALUE_HOLDER_TYPE,
+                            localParameterTracker.getParameter(
+                                className, name, lpd.name, mHelper, mv));
+                  }
+                  loadArguments(argumentProviders);
                   invokeBTraceAction(asm, om);
                 }
                 if (l != null) {
@@ -1003,13 +1128,16 @@ public class Instrumentor extends ClassVisitor {
                   returnValIndex = storeAsNew();
                 }
 
-                loadArguments(
+                ArgumentProvider[] argumentProviders =
+                    new ArgumentProvider[6 + om.getLocalParameterDefs().size()];
+                argumentProviders[0] =
                     isStaticAccess
                         ? constArg(om.getTargetInstanceParameter(), null)
                         : localVarArg(
                             om.getTargetInstanceParameter(),
                             Constants.OBJECT_TYPE,
-                            calledInstanceIndex),
+                            calledInstanceIndex);
+                argumentProviders[1] =
                     constArg(
                         om.getTargetMethodOrFieldParameter(),
                         getMethodOrFieldName(
@@ -1017,12 +1145,24 @@ public class Instrumentor extends ClassVisitor {
                             opcode,
                             targetClassName,
                             targetFieldName,
-                            desc)),
-                    localVarArg(om.getReturnParameter(), fldType, returnValIndex),
-                    constArg(om.getClassNameParameter(), className.replace('/', '.')),
-                    constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                    selfArg(om.getSelfParameter(), Type.getObjectType(className)));
-
+                            desc));
+                argumentProviders[2] =
+                    constArg(om.getClassNameParameter(), className.replace('/', '.'));
+                argumentProviders[3] = constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+                argumentProviders[4] =
+                    selfArg(om.getSelfParameter(), Type.getObjectType(className));
+                argumentProviders[5] =
+                    localVarArg(om.getReturnParameter(), fldType, returnValIndex);
+                int i = 6;
+                for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                  argumentProviders[i++] =
+                      localVarArg(
+                          lpd.idx,
+                          Constants.VALUE_HOLDER_TYPE,
+                          localParameterTracker.getParameter(
+                              className, name, lpd.name, mHelper, mv));
+                }
+                loadArguments(argumentProviders);
                 invokeBTraceAction(asm, om);
                 if (l != null) {
                   mv.visitLabel(l);
@@ -1072,14 +1212,17 @@ public class Instrumentor extends ClassVisitor {
                 Label l = levelCheckBefore(om, bcn.getClassName(true));
 
                 if (where == Where.BEFORE) {
-                  loadArguments(
-                      localVarArg(vr.getArgIdx(0), fieldType, fldValueIndex),
+                  ArgumentProvider[] argumentProviders =
+                      new ArgumentProvider[6 + om.getLocalParameterDefs().size()];
+                  argumentProviders[0] = localVarArg(vr.getArgIdx(0), fieldType, fldValueIndex);
+                  argumentProviders[1] =
                       isStaticAccess
                           ? constArg(om.getTargetInstanceParameter(), null)
                           : localVarArg(
                               om.getTargetInstanceParameter(),
                               Constants.OBJECT_TYPE,
-                              calledInstanceIndex),
+                              calledInstanceIndex);
+                  argumentProviders[2] =
                       constArg(
                           om.getTargetMethodOrFieldParameter(),
                           getMethodOrFieldName(
@@ -1087,11 +1230,23 @@ public class Instrumentor extends ClassVisitor {
                               opcode,
                               targetClassName,
                               targetFieldName,
-                              desc)),
-                      constArg(om.getClassNameParameter(), className.replace('/', '.')),
-                      constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                      selfArg(om.getSelfParameter(), Type.getObjectType(className)));
-
+                              desc));
+                  argumentProviders[3] =
+                      constArg(om.getClassNameParameter(), className.replace('/', '.'));
+                  argumentProviders[4] =
+                      constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+                  argumentProviders[5] =
+                      selfArg(om.getSelfParameter(), Type.getObjectType(className));
+                  int i = 6;
+                  for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                    argumentProviders[i++] =
+                        localVarArg(
+                            lpd.idx,
+                            Constants.VALUE_HOLDER_TYPE,
+                            localParameterTracker.getParameter(
+                                className, name, lpd.name, mHelper, mv));
+                  }
+                  loadArguments(argumentProviders);
                   invokeBTraceAction(asm, om);
                 }
                 if (l != null) {
@@ -1116,14 +1271,17 @@ public class Instrumentor extends ClassVisitor {
               if (vr.isValid()) {
                 Label l = levelCheckAfter(om, bcn.getClassName(true));
 
-                loadArguments(
-                    localVarArg(vr.getArgIdx(0), fieldType, fldValueIndex),
+                ArgumentProvider[] argumentProviders =
+                    new ArgumentProvider[6 + om.getLocalParameterDefs().size()];
+                argumentProviders[0] = localVarArg(vr.getArgIdx(0), fieldType, fldValueIndex);
+                argumentProviders[1] =
                     isStaticAccess
                         ? constArg(om.getTargetInstanceParameter(), null)
                         : localVarArg(
                             om.getTargetInstanceParameter(),
                             Constants.OBJECT_TYPE,
-                            calledInstanceIndex),
+                            calledInstanceIndex);
+                argumentProviders[2] =
                     constArg(
                         om.getTargetMethodOrFieldParameter(),
                         getMethodOrFieldName(
@@ -1131,11 +1289,22 @@ public class Instrumentor extends ClassVisitor {
                             opcode,
                             targetClassName,
                             targetFieldName,
-                            desc)),
-                    constArg(om.getClassNameParameter(), className.replace('/', '.')),
-                    constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                    selfArg(om.getSelfParameter(), Type.getObjectType(className)));
-
+                            desc));
+                argumentProviders[3] =
+                    constArg(om.getClassNameParameter(), className.replace('/', '.'));
+                argumentProviders[4] = constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+                argumentProviders[5] =
+                    selfArg(om.getSelfParameter(), Type.getObjectType(className));
+                int i = 6;
+                for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                  argumentProviders[i++] =
+                      localVarArg(
+                          lpd.idx,
+                          Constants.VALUE_HOLDER_TYPE,
+                          localParameterTracker.getParameter(
+                              className, name, lpd.name, mHelper, mv));
+                }
+                loadArguments(argumentProviders);
                 invokeBTraceAction(asm, om);
                 if (l != null) {
                   mv.visitLabel(l);
@@ -1162,15 +1331,25 @@ public class Instrumentor extends ClassVisitor {
           private void callAction(String cName) {
             if (vr.isValid()) {
               Label l = levelCheck(om, bcn.getClassName(true));
-
-              loadArguments(
-                  constArg(vr.getArgIdx(0), cName),
-                  constArg(om.getClassNameParameter(), className.replace('/', '.')),
-                  constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                  selfArg(om.getSelfParameter(), Type.getObjectType(className)),
+              ArgumentProvider[] argumentProviders =
+                  new ArgumentProvider[5 + om.getLocalParameterDefs().size()];
+              argumentProviders[0] = constArg(vr.getArgIdx(0), cName);
+              argumentProviders[1] =
+                  constArg(om.getClassNameParameter(), className.replace('/', '.'));
+              argumentProviders[2] = constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+              argumentProviders[3] = selfArg(om.getSelfParameter(), Type.getObjectType(className));
+              argumentProviders[4] =
                   localVarArg(
-                      om.getTargetInstanceParameter(), Constants.OBJECT_TYPE, castTypeIndex));
-
+                      om.getTargetInstanceParameter(), Constants.OBJECT_TYPE, castTypeIndex);
+              int i = 5;
+              for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                argumentProviders[i++] =
+                    localVarArg(
+                        lpd.idx,
+                        Constants.VALUE_HOLDER_TYPE,
+                        localParameterTracker.getParameter(className, name, lpd.name, mHelper, mv));
+              }
+              loadArguments(argumentProviders);
               invokeBTraceAction(asm, om);
               if (l != null) {
                 mv.visitLabel(l);
@@ -1222,12 +1401,22 @@ public class Instrumentor extends ClassVisitor {
             ValidationResult vr = validateArguments(om, actionArgTypes, new Type[] {Type.INT_TYPE});
             if (vr.isValid()) {
               Label l = levelCheck(om, bcn.getClassName(true));
-              loadArguments(
-                  constArg(vr.getArgIdx(0), line),
-                  constArg(om.getClassNameParameter(), className.replace('/', '.')),
-                  constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                  selfArg(om.getSelfParameter(), Type.getObjectType(className)));
-
+              ArgumentProvider[] argumentProviders =
+                  new ArgumentProvider[4 + om.getLocalParameterDefs().size()];
+              argumentProviders[0] = constArg(vr.getArgIdx(0), line);
+              argumentProviders[1] =
+                  constArg(om.getClassNameParameter(), className.replace('/', '.'));
+              argumentProviders[2] = constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+              argumentProviders[3] = selfArg(om.getSelfParameter(), Type.getObjectType(className));
+              int i = 4;
+              for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                argumentProviders[i++] =
+                    localVarArg(
+                        lpd.idx,
+                        Constants.VALUE_HOLDER_TYPE,
+                        localParameterTracker.getParameter(className, name, lpd.name, mHelper, mv));
+              }
+              loadArguments(argumentProviders);
               invokeBTraceAction(asm, om);
               if (l != null) {
                 mv.visitLabel(l);
@@ -1274,12 +1463,25 @@ public class Instrumentor extends ClassVisitor {
                     validateArguments(om, actionArgTypes, new Type[] {Constants.STRING_TYPE});
                 if (vr.isValid()) {
                   Label l = levelCheck(om, bcn.getClassName(true));
-                  loadArguments(
-                      constArg(vr.getArgIdx(0), extName),
-                      constArg(om.getClassNameParameter(), className.replace('/', '.')),
-                      constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                      selfArg(om.getSelfParameter(), Type.getObjectType(className)));
-
+                  ArgumentProvider[] argumentProviders =
+                      new ArgumentProvider[4 + om.getLocalParameterDefs().size()];
+                  argumentProviders[0] = constArg(vr.getArgIdx(0), extName);
+                  argumentProviders[1] =
+                      constArg(om.getClassNameParameter(), className.replace('/', '.'));
+                  argumentProviders[2] =
+                      constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+                  argumentProviders[3] =
+                      selfArg(om.getSelfParameter(), Type.getObjectType(className));
+                  int i = 4;
+                  for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                    argumentProviders[i++] =
+                        localVarArg(
+                            lpd.idx,
+                            Constants.VALUE_HOLDER_TYPE,
+                            localParameterTracker.getParameter(
+                                className, name, lpd.name, mHelper, mv));
+                  }
+                  loadArguments(argumentProviders);
                   invokeBTraceAction(asm, om);
                   if (l != null) {
                     mv.visitLabel(l);
@@ -1308,13 +1510,27 @@ public class Instrumentor extends ClassVisitor {
                     asm.dupValue(instType);
                     returnValIndex = storeAsNew();
                   }
-                  loadArguments(
-                      constArg(vr.getArgIdx(0), extName),
-                      localVarArg(om.getReturnParameter(), instType, returnValIndex),
-                      constArg(om.getClassNameParameter(), className.replace('/', '.')),
-                      constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                      selfArg(om.getSelfParameter(), Type.getObjectType(className)));
-
+                  ArgumentProvider[] argumentProviders =
+                      new ArgumentProvider[5 + om.getLocalParameterDefs().size()];
+                  argumentProviders[0] = constArg(vr.getArgIdx(0), extName);
+                  argumentProviders[1] =
+                      constArg(om.getClassNameParameter(), className.replace('/', '.'));
+                  argumentProviders[2] =
+                      constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+                  argumentProviders[3] =
+                      selfArg(om.getSelfParameter(), Type.getObjectType(className));
+                  argumentProviders[4] =
+                      localVarArg(om.getReturnParameter(), instType, returnValIndex);
+                  int i = 5;
+                  for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                    argumentProviders[i++] =
+                        localVarArg(
+                            lpd.idx,
+                            Constants.VALUE_HOLDER_TYPE,
+                            localParameterTracker.getParameter(
+                                className, name, lpd.name, mHelper, mv));
+                  }
+                  loadArguments(argumentProviders);
                   invokeBTraceAction(asm, om);
                   if (l != null) {
                     mv.visitLabel(l);
@@ -1343,13 +1559,26 @@ public class Instrumentor extends ClassVisitor {
                         om, actionArgTypes, new Type[] {Constants.STRING_TYPE, Type.INT_TYPE});
                 if (vr.isValid()) {
                   Label l = levelCheck(om, bcn.getClassName(true));
-                  loadArguments(
-                      constArg(vr.getArgIdx(0), extName),
-                      constArg(vr.getArgIdx(1), dims),
-                      constArg(om.getClassNameParameter(), className.replace('/', '.')),
-                      constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                      selfArg(om.getSelfParameter(), Type.getObjectType(className)));
-
+                  ArgumentProvider[] argumentProviders =
+                      new ArgumentProvider[5 + om.getLocalParameterDefs().size()];
+                  argumentProviders[0] = constArg(vr.getArgIdx(0), extName);
+                  argumentProviders[1] = constArg(vr.getArgIdx(1), dims);
+                  argumentProviders[2] =
+                      constArg(om.getClassNameParameter(), className.replace('/', '.'));
+                  argumentProviders[3] =
+                      constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+                  argumentProviders[4] =
+                      selfArg(om.getSelfParameter(), Type.getObjectType(className));
+                  int i = 5;
+                  for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                    argumentProviders[i++] =
+                        localVarArg(
+                            lpd.idx,
+                            Constants.VALUE_HOLDER_TYPE,
+                            localParameterTracker.getParameter(
+                                className, name, lpd.name, mHelper, mv));
+                  }
+                  loadArguments(argumentProviders);
                   invokeBTraceAction(asm, om);
                   if (l != null) {
                     mv.visitLabel(l);
@@ -1384,14 +1613,28 @@ public class Instrumentor extends ClassVisitor {
                     asm.dupValue(instType);
                     returnValIndex = storeAsNew();
                   }
-                  loadArguments(
-                      constArg(vr.getArgIdx(0), extName),
-                      constArg(vr.getArgIdx(1), dims),
-                      localVarArg(om.getReturnParameter(), instType, returnValIndex),
-                      constArg(om.getClassNameParameter(), className.replace('/', '.')),
-                      constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                      selfArg(om.getSelfParameter(), Type.getObjectType(className)));
-
+                  ArgumentProvider[] argumentProviders =
+                      new ArgumentProvider[6 + om.getLocalParameterDefs().size()];
+                  argumentProviders[0] = constArg(vr.getArgIdx(0), extName);
+                  argumentProviders[1] = constArg(vr.getArgIdx(1), dims);
+                  argumentProviders[2] =
+                      constArg(om.getClassNameParameter(), className.replace('/', '.'));
+                  argumentProviders[3] =
+                      constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+                  argumentProviders[4] =
+                      selfArg(om.getSelfParameter(), Type.getObjectType(className));
+                  argumentProviders[5] =
+                      localVarArg(om.getReturnParameter(), instType, returnValIndex);
+                  int i = 6;
+                  for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                    argumentProviders[i++] =
+                        localVarArg(
+                            lpd.idx,
+                            Constants.VALUE_HOLDER_TYPE,
+                            localParameterTracker.getParameter(
+                                className, name, lpd.name, mHelper, mv));
+                  }
+                  loadArguments(argumentProviders);
                   invokeBTraceAction(asm, om);
                   if (l != null) {
                     mv.visitLabel(l);
@@ -1454,20 +1697,30 @@ public class Instrumentor extends ClassVisitor {
               retValIndex = storeAsNew();
             }
 
-            loadArguments(
-                vr,
-                actionArgTypes,
-                isStatic(),
-                constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                constArg(om.getClassNameParameter(), className.replace("/", ".")),
-                localVarArg(om.getReturnParameter(), probeRetType, retValIndex, boxReturnValue),
-                selfArg(om.getSelfParameter(), Type.getObjectType(className)),
+            ArgumentProvider[] argumentProviders =
+                new ArgumentProvider[5 + om.getLocalParameterDefs().size()];
+            argumentProviders[0] = constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+            argumentProviders[1] =
+                constArg(om.getClassNameParameter(), className.replace('/', '.'));
+            argumentProviders[2] = selfArg(om.getSelfParameter(), Type.getObjectType(className));
+            argumentProviders[3] =
+                localVarArg(om.getReturnParameter(), probeRetType, retValIndex, boxReturnValue);
+            argumentProviders[4] =
                 new ArgumentProvider(asm, om.getDurationParameter()) {
                   @Override
                   public void doProvide() {
                     MethodTrackingExpander.DURATION.insert(mv);
                   }
-                });
+                };
+            int i = 5;
+            for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+              argumentProviders[i++] =
+                  localVarArg(
+                      lpd.idx,
+                      Constants.VALUE_HOLDER_TYPE,
+                      localParameterTracker.getParameter(className, name, lpd.name, mHelper, mv));
+            }
+            loadArguments(vr, actionArgTypes, isStatic(), argumentProviders);
 
             invokeBTraceAction(asm, om);
           }
@@ -1555,15 +1808,26 @@ public class Instrumentor extends ClassVisitor {
               }
 
               if (where == Where.BEFORE) {
-                loadArguments(
-                    vr,
-                    actionArgTypes,
-                    isStatic(),
-                    constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                    constArg(om.getClassNameParameter(), className.replace("/", ".")),
+                ArgumentProvider[] argumentProviders =
+                    new ArgumentProvider[4 + om.getLocalParameterDefs().size()];
+                argumentProviders[0] = constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+                argumentProviders[1] =
+                    constArg(om.getClassNameParameter(), className.replace("/", "."));
+                argumentProviders[2] =
                     localVarArg(
-                        om.getTargetInstanceParameter(), Constants.OBJECT_TYPE, storedObjIdx),
-                    selfArg(om.getSelfParameter(), Type.getObjectType(className)));
+                        om.getTargetInstanceParameter(), Constants.OBJECT_TYPE, storedObjIdx);
+                argumentProviders[3] =
+                    selfArg(om.getSelfParameter(), Type.getObjectType(className));
+                int i = 4;
+                for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                  argumentProviders[i++] =
+                      localVarArg(
+                          lpd.idx,
+                          Constants.VALUE_HOLDER_TYPE,
+                          localParameterTracker.getParameter(
+                              className, name, lpd.name, mHelper, mv));
+                }
+                loadArguments(vr, actionArgTypes, isStatic(), argumentProviders);
                 invokeBTraceAction(asm, om);
               }
               if (l != null) {
@@ -1579,15 +1843,26 @@ public class Instrumentor extends ClassVisitor {
               if (vr.isValid()) {
                 Label l = levelCheckAfter(om, bcn.getClassName(true));
 
-                loadArguments(
-                    vr,
-                    actionArgTypes,
-                    isStatic(),
-                    constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                    constArg(om.getClassNameParameter(), className.replace("/", ".")),
+                ArgumentProvider[] argumentProviders =
+                    new ArgumentProvider[4 + om.getLocalParameterDefs().size()];
+                argumentProviders[0] = constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+                argumentProviders[1] =
+                    constArg(om.getClassNameParameter(), className.replace("/", "."));
+                argumentProviders[2] =
                     localVarArg(
-                        om.getTargetInstanceParameter(), Constants.OBJECT_TYPE, storedObjIdx),
-                    selfArg(om.getSelfParameter(), Type.getObjectType(className)));
+                        om.getTargetInstanceParameter(), Constants.OBJECT_TYPE, storedObjIdx);
+                argumentProviders[3] =
+                    selfArg(om.getSelfParameter(), Type.getObjectType(className));
+                int i = 4;
+                for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                  argumentProviders[i++] =
+                      localVarArg(
+                          lpd.idx,
+                          Constants.VALUE_HOLDER_TYPE,
+                          localParameterTracker.getParameter(
+                              className, name, lpd.name, mHelper, mv));
+                }
+                loadArguments(vr, actionArgTypes, isStatic(), argumentProviders);
 
                 invokeBTraceAction(asm, om);
                 if (l != null) {
@@ -1619,20 +1894,30 @@ public class Instrumentor extends ClassVisitor {
           }
 
           private void loadActionArgs() {
-            loadArguments(
-                vr,
-                actionArgTypes,
-                isStatic(),
-                constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                constArg(om.getClassNameParameter(), className.replace("/", ".")),
-                localVarArg(om.getTargetInstanceParameter(), Constants.OBJECT_TYPE, storedObjIdx),
-                selfArg(om.getSelfParameter(), Type.getObjectType(className)),
+            ArgumentProvider[] argumentProviders =
+                new ArgumentProvider[5 + om.getLocalParameterDefs().size()];
+            argumentProviders[0] = constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+            argumentProviders[1] =
+                constArg(om.getClassNameParameter(), className.replace("/", "."));
+            argumentProviders[2] =
+                localVarArg(om.getTargetInstanceParameter(), Constants.OBJECT_TYPE, storedObjIdx);
+            argumentProviders[3] = selfArg(om.getSelfParameter(), Type.getObjectType(className));
+            argumentProviders[4] =
                 new MethodInstrumentor.ArgumentProvider(asm, om.getDurationParameter()) {
                   @Override
                   public void doProvide() {
                     MethodTrackingExpander.DURATION.insert(mv);
                   }
-                });
+                };
+            int i = 5;
+            for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+              argumentProviders[i++] =
+                  localVarArg(
+                      lpd.idx,
+                      Constants.VALUE_HOLDER_TYPE,
+                      localParameterTracker.getParameter(className, name, lpd.name, mHelper, mv));
+            }
+            loadArguments(vr, actionArgTypes, isStatic(), argumentProviders);
           }
 
           @Override
@@ -1707,12 +1992,24 @@ public class Instrumentor extends ClassVisitor {
                 asm.dup();
                 throwableIndex = storeAsNew();
               }
-              loadArguments(
+              ArgumentProvider[] argumentProviders =
+                  new ArgumentProvider[4 + om.getLocalParameterDefs().size()];
+              argumentProviders[0] =
                   localVarArg(
-                      om.getTargetInstanceParameter(), Constants.THROWABLE_TYPE, throwableIndex),
-                  constArg(om.getClassNameParameter(), className.replace('/', '.')),
-                  constArg(om.getMethodParameter(), getName(om.isMethodFqn())),
-                  selfArg(om.getSelfParameter(), Type.getObjectType(className)));
+                      om.getTargetInstanceParameter(), Constants.THROWABLE_TYPE, throwableIndex);
+              argumentProviders[1] =
+                  constArg(om.getClassNameParameter(), className.replace('/', '.'));
+              argumentProviders[2] = constArg(om.getMethodParameter(), getName(om.isMethodFqn()));
+              argumentProviders[3] = selfArg(om.getSelfParameter(), Type.getObjectType(className));
+              int i = 4;
+              for (LocalParameterDef lpd : om.getLocalParameterDefs().values()) {
+                argumentProviders[i++] =
+                    localVarArg(
+                        lpd.idx,
+                        Constants.VALUE_HOLDER_TYPE,
+                        localParameterTracker.getParameter(className, name, lpd.name, mHelper, mv));
+              }
+              loadArguments(argumentProviders);
 
               invokeBTraceAction(asm, om);
               if (l != null) {
