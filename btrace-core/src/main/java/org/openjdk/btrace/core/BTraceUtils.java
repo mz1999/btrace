@@ -32,6 +32,7 @@ import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.nio.ByteBuffer;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.text.SimpleDateFormat;
@@ -896,6 +897,17 @@ public class BTraceUtils {
     }
     buf.append(']');
     println(buf.toString());
+  }
+
+  public static void printArray(ByteBuffer[] array) {
+    for (ByteBuffer byteBuffer : array) {
+      byte[] bytes = byteBuffer.array();
+      if (bytes.length > 512) {
+        println(new String(bytes, 0, 512));
+      } else {
+        println(new String(bytes));
+      }
+    }
   }
 
   /**

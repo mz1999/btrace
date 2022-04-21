@@ -70,7 +70,8 @@ public class ClassFilter {
     SENSITIVE_CLASSES.add("java/lang/concurrent/");
     SENSITIVE_CLASSES.add("sun/reflect");
     SENSITIVE_CLASSES.add("sun/misc/Unsafe");
-    SENSITIVE_CLASSES.add("sun/security/");
+    SENSITIVE_CLASSES.add("sun/security/rsa");
+    SENSITIVE_CLASSES.add("sun/security/provider");
     SENSITIVE_CLASSES.add("org/openjdk/btrace/");
     SENSITIVE_CLASSES.add("com/sun/proxy/");
     SENSITIVE_CLASSES.add("sun/instrument/");
