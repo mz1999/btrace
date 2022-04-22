@@ -899,13 +899,27 @@ public class BTraceUtils {
     println(buf.toString());
   }
 
+  private static final int outputLimit = 512;
+
   public static void printArray(ByteBuffer[] array) {
-    for (ByteBuffer byteBuffer : array) {
-      byte[] bytes = byteBuffer.array();
-      if (bytes.length > 512) {
-        println(new String(bytes, 0, 512));
+    for (ByteBuffer src : array) {
+      if (!src.isDirect()) {
+        byte[] bytes = src.array();
+        if (bytes.length > outputLimit) {
+          println(new String(bytes, 0, outputLimit));
+        } else {
+          println(new String(bytes));
+        }
       } else {
-        println(new String(bytes));
+        int count = src.limit();
+        if (count > outputLimit) {
+          count = outputLimit;
+        }
+        ByteBuffer buffer = ByteBuffer.allocate(count);
+        for (int i = 0; i < count; i++) {
+          buffer.put(src.get(i));
+        }
+        println(new String(buffer.array()));
       }
     }
   }
